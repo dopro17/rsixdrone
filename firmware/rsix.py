@@ -5,6 +5,12 @@ Created on Sun Mar 21 13:04:27 2021
 @author: douglas prodocimo
 """
 
+"""
+This lib contains all necessary functions to initialize hardware as objects
+like servo control (with PID), traction motor and some simple math filters.
+The intent about this lib is to keep the main code clean.
+"""
+
 class motor:
     def __init__(self, pin_A, pin_B, freq=1000, name=""):
         
@@ -17,25 +23,25 @@ class motor:
     def speed(self, s):
         
         if (s < -1 and s > 1):
-            print("%s : Speed is out of range")
-            return None
+            print("%s: Speed is out of range")
+            return False
         
         if (s > 0):
             duty = int(s*1023)
             self.output_B.duty(0)      #Garantir que o dutty seja 0 para evitar curto circuito na ponte
             self.output_A.duty(duty)
-            return 1
+            return True
         
         if (s < 0):
             duty = int(abs(s)*1023)
             self.output_B.duty(duty) 
             self.output_A.duty(0)     #Garantir que o dutty seja 0 para evitar curto circuito na ponte
-            return 1
+            return True
         
         if (s == 0):
             self.output_B.duty(0)
             self.output_A.duty(0)
-            return 1
+            return True
         
     def deinit(self):
 
@@ -60,6 +66,9 @@ class linear_encoder:
             x = self.adc_in.read()
             y = self.a * x + self.b
             return y
+        
+        def deinit(self):
+            self.adc_in.deinit()
 
 
 
@@ -107,7 +116,7 @@ class PIDController:
 
 class servo:
 
-    def __init__ (self, motor_obj, encoder_obj, pid_obj, debug=False):
+    def __init__ (self, motor_obj, encoder_obj, pid_obj):
 
         import _thread
         from machine import Timer
@@ -120,18 +129,18 @@ class servo:
         self.block = _thread.allocate_lock()
         self.loop_lock = _thread.allocate_lock()
         self.tim = Timer(-1)
-        self.debug = debug
+#        self.debug = debug #Need to debug=False in __init__ args) 
         
-        if debug:
-            self.data = [float()]*100
-            self.n = 0
+#        if debug:
+#            self.data = [float()]*100
+#            self.n = 0
     
-    def debugreset(self):
-        if self.debug:
-            self.data = [float(), float()]*100
-            self.n = 0
-        else:
-            print("Debug is not enabled")
+#    def debugreset(self):
+#        if self.debug:
+#            self.data = [float(), float()]*100
+#            self.n = 0
+#        else:
+#            print("Debug is not enabled")
             
     
     def loop(self):
@@ -142,13 +151,13 @@ class servo:
             self.actual = self.setpoint
             self.setpoint_lock.release()
         
-        m = self.pid.process(self.setpoint, position)
+        m = self.pid.process(self.actual, position)
         self.motor.speed(m)
         
-        if self.debug:
-            if self.n <= 99:
-                self.data[self.n] = [self.setpoint, position]
-                self.n += 1
+#        if self.debug:
+#            if self.n <= 99:
+#                self.data[self.n] = [self.setpoint, position]
+#                self.n += 1
             
         
         
@@ -162,7 +171,23 @@ class servo:
             self.setpoint_lock.release()
         return p            
 
+
+#Math lib for control
+
+
+class modafilter:
+    
+    def __init__(self, size=5):
+        self.size = size
+        self.buffer = [float()]*size
         
-            
         
+    def moda(self, x):
+        self.buffer.pop(-1)
+        self.buffer.insert(0, x)
         
+        res = 0
+        for n in self.buffer:
+            res = res + n
+    
+        return res/self.size

@@ -35,7 +35,8 @@ try:
         if eixos[1] < 0.2 and eixos[1] > -0.2:
             eixos = (eixos[0], 0.0)
         
-        print("\rTração: %+0.2f Direção Y: %+0.2f" % eixos, end='')
+#        print("\rTração: %+0.2f Direção Y: %+0.2f" % eixos, end='')
+        print("Direção: %+0.2f Tração Y: %+0.2f" % eixos)
         packet_data = packer.pack(*eixos)
         
         sock.sendto(packet_data,(UDP_IP, UDP_PORT))
