@@ -9,6 +9,7 @@ import pygame
 import time
 import struct
 import psutil, os
+import signal
 
 
 p = psutil.Process(os.getpid())
@@ -24,7 +25,7 @@ packer = struct.Struct('fffff')
 
 def initconnection(IP, port):
     import socket
-    print("Connecting to %s:%d", (IP, port))
+    print("Connecting to %s:%d" % (IP, port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_address = (IP, port)
     sock.connect(server_address)
@@ -56,7 +57,6 @@ while True:
             
             except OSError:
                 print("Lost control connection")
-                sock.close()
                 break
             
             except RuntimeError as e:
@@ -66,6 +66,7 @@ while True:
         
             except KeyboardInterrupt:
                 print("Exiting")
+                signal.SIGKILL
                 break
                 
     
