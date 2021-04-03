@@ -1,35 +1,48 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 22 21:34:56 2021
+Created on Thu Apr  1 22:34:12 2021
 
 @author: douglas
 """
 
+import sys
+sys.path.append('/opt/drone')
 from rsix import *
-from machine import Timer
-import socket, struct, _thread
+from pythontimers import *
+import _thread, struct, socket
 
-#Setup the tcp server to receive data from pc host
+
+
+a = 2.4450E-4
+b = -3.1758
+offset = -0.1
+kp = 1.4
+ki = 0.15
+kd = 0.05
+dt = 0.05
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server = socket.getaddrinfo('0.0.0.0', 10000)[0][-1]
 sock.bind(server)
 sock.listen(1)
 
-#setup the hardware
-sr_motor = motor(25,26, freq=500)
-sr_enc = linear_encoder(36, 1.3793E-3,-2.6814)
-sr_pid = PIDController(1.4, 0.15, 0.05, 0.05)
-sr = servo(sr_motor, sr_enc, sr_pid)
-tim = Timer(-1)
-tim.init(period=50, mode=Timer.PERIODIC, callback=lambda t: sr.loop())
 
-trac = motor(32, 33, freq=500, name="Tracao")
-   
-        
+sr_enc = linear_encoder(adc.CH_A, a, b)
+sr_motor = motor(pwm.I2C_PWM2, pwm.I2C_PWM3)
+sr_pid = PIDController(kp, ki, kd, dt)
+sr = servo(sr_motor, sr_enc, sr_pid, offset)
+
+timer0 = Timer(dt, sr.loop)
+timer0.start()
+
+trac = motor(pwm.I2C_PWM0, pwm.I2C_PWM1)
+
 def mainTh():
     buffer = [float()]*5
         
     t_filter = modafilter(5)
+    
     
     while True:
         connection, client_addr = sock.accept()
@@ -42,7 +55,7 @@ def mainTh():
         while True:
             try:
                 
-                nbytes = connection.readinto(data, 20)
+                nbytes = connection.recv_into(data, 20)
                 
                 if nbytes:
                     
@@ -64,6 +77,13 @@ def mainTh():
                 print("Lost control connection")
                 connection.close()
                 break
-            
-th = _thread.start_new_thread(mainTh, [])
+try:            
+    _thread.start_new_thread(mainTh, ())
+except:
+    print("Exiting")
+    sr_motor.deinit()
+    sr_enc.deinit()
+    trac.deinit()
+    sock.close()
+    exit()
 

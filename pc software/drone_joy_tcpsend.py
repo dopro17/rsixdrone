@@ -36,14 +36,14 @@ def initconnection(IP, port):
 
 while True:
     try:
-        sock = initconnection('192.168.2.157', 10000)
+        sock = initconnection('192.168.2.160', 10000)
 
         while True:
 
             try:
                 event = pygame.event.get()
                 pygame.event.clear()
-                eixos = (j.get_axis(3), j.get_axis(1),0,0,0)
+                eixos = (-j.get_axis(3), j.get_axis(1),0,0,0)
                 
                 if eixos[1] < 0.1 and eixos[1] > -0.1:
                 
