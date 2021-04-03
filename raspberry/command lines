@@ -1,13 +1,30 @@
-server:
-ffmpeg -f v4l2 -input_format mjpeg -video_size 1280x720 -i /dev/video0 -c:v copy -f mjpeg udp://192.168.2.69:5000
+Command line examples to streaming video from raspberry to host PC.
+Because of problems with my camera, frame rate options doesn't make any effect, but maybe be useful for other camera model.
 
-client
-ffplay -f mjpeg -i udp://0.0.0.0:5000
+MJPEG stream using ffmpeg
+	server:
+	>> ffmpeg -f v4l2 -input_format mjpeg -video_size 1280x720 -i /dev/video0 -c:v copy -f mjpeg udp://192.168.2.69:5000
+	client:
+
+	>> ffplay -f mjpeg -i udp://0.0.0.0:5000
+	(High latency, use "-framerate xx" in ffplay to avoid inconstant delay)
 
 
-gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg,width=1920,height=1080 ! rtpjpegpay ! udpsink host=192.168.2.69 port=5000
-gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
+MPJEG stream using gstreamer
+	server:
+	>> gst-launch-1.0 v4l2src device=/dev/video0 ! image/jpeg,width=1920,height=1080 ! rtpjpegpay ! udpsink host=192.168.2.69 port=5000
+
+	client:
+	>> gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
+	(Low latency, good image quality, uses a good portion of network traffic too)
 
 
-gst-launch-1.0 -v v4l2src device=/dev/video0 ! 'video/x-raw,width=1280,height=720' ! videoconvert ! omxh264enc ! rtph264pay ! udpsink host=192.168.2.69 port=5000
-gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=H264 ! rtph264depay ! h264parse ! avdec_h264 ! autovideosink
+
+H264 (rasp pi 3 b+ hardware encoder, cpu free) stream using gstreamer
+
+	server:
+	>> gst-launch-1.0 -v v4l2src device=/dev/video0 ! 'video/x-raw,width=1280,height=720' ! videoconvert ! omxh264enc ! rtph264pay ! udpsink host=192.168.2.69 port=5000
+
+	client:
+	>> gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=H264 ! rtph264depay ! h264parse ! avdec_h264 ! autovideosink
+	(Low latency, not so good image quality, but saves a lot of network traffic)
